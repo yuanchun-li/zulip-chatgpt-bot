@@ -16,7 +16,7 @@ load_dotenv()
 
 # Set up logging
 LOGLEVEL = os.environ.get('LOGLEVEL', 'INFO').upper()
-logging.basicConfig(filename='logs.txt', filemode='a', format='%(asctime)s - %(levelname)s - %(message)s', level=LOGLEVEL)
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=LOGLEVEL)
 
 if not os.path.exists('data'):
     os.makedirs('data')
@@ -324,7 +324,7 @@ def handle_message(event):
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     sender_email = msg['sender_email']
     sender_name = msg['sender_full_name']
-    logging.debug("%s; %s; subcommands: %s; content: %s", str(current_time), str(sender_email), ",".join(subcommands), content)
+    logging.debug("%s (%s); subcommands: %s; content: %s", str(sender_email), str(sender_name), ",".join(subcommands), content)
 
     # first get rid of the command or mention trigger
     content = re.sub("@\*\*{bot}\*\*".format(bot=BOT_NAME), "", content)
@@ -419,8 +419,8 @@ def handle_message(event):
             content_brief = content[:50] + ' ... ' + content[-50:]
         else:
             content_brief = content
-        content_brief = content_brief.replace('\n', '  ')
-        logging.info(f'{current_time}; {sender_email} ({sender_name}); prompt_tokens={prompt_tokens}; completion_tokens={completion_tokens}; {content_brief}')
+        content_brief = content_brief.replace('\n', '<br>')
+        logging.info(f'{sender_email} ({sender_name}); prompt_tokens={prompt_tokens}; completion_tokens={completion_tokens}; {content_brief}')
 
     except Exception as e:
         logging.error(e)
