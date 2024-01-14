@@ -2,7 +2,7 @@ import os
 import sys
 import logging
 import re
-# import openai
+from openai import OpenAI
 import zulip
 from dotenv import load_dotenv
 import tiktoken
@@ -39,19 +39,6 @@ PERMISSIONS_SET_CONTEXT = os.environ['PERMISSIONS_SET_CONTEXT']
 DEFAULT_MODEL_NAME = os.environ['DEFAULT_MODEL_NAME']
 BOT_NAME = os.environ['BOT_NAME']
 VERSION = "1.2.0"
-
-class GPT:
-    # gpt-3.5-turbo-1106, gpt-4-1106-preview
-    @staticmethod
-    def query(messages, model=DEFAULT_MODEL_NAME, url=gpt_api_url, api_key=gpt_api_key, temperature=0.7, verbose=True):
-        body = {'model':model, 'messages':messages, 'temperature': temperature}
-        headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {api_key}', }
-        response = requests.post(url=url, json=body, headers=headers)
-        r = json.loads(response.content)
-        r_content = r['choices'][0]['message']['content']
-        prompt_tokens = r['usage']['prompt_tokens']
-        completion_tokens += r['usage']['completion_tokens']
-        return r_content, prompt_tokens, completion_tokens
 
 contexts = {}
 
@@ -95,11 +82,25 @@ def send_reply(reply, message):
         }
     client.send_message(response)
 
+client = OpenAI(
+    base_url=gpt_api_url,
+    # This is the default and can be omitted
+    api_key=gpt_api_key
+)
 
 def get_gpt_response(messages, model=DEFAULT_MODEL_NAME):
     try:
-        response = GPT.query(messages, model)
-        return response.choices[0].message.content.strip()
+        completion = client.chat.completions.create(
+            messages=messages,
+            model=model,
+            timeout=15
+        )
+        response = completion.choices[0].message.content
+        prompt_tokens = completion.usage.prompt_tokens
+        completion_tokens += completion.usage.completion_tokens
+        # return response, prompt_tokens, completion_tokens
+        reply = f'{response}\n(prompt_tokens={prompt_tokens}, completion_tokens={prompt_tokens})'
+        return reply
     except Exception as e:
         logging.error(e)
         return "GPT API error. Please try again later."
@@ -329,7 +330,7 @@ def handle_message(event):
 
     model_tokens = {
         # input limit for GPT-3.5 Turbo (context 4k, prompt 2.5k, response 1.5k)
-        'gpt-3.5-turbo-1106': 3500,
+        'gpt-3.5-turbo': 3500,
         # input limit for GPT-4 (context 8k, prompt 6k, response 2k)
         'gpt-4': 6000,
         'gpt-4-0314': 6000,
@@ -343,7 +344,7 @@ def handle_message(event):
     # TODO get default model from settings or check !settings
 
     if "gpt3" in subcommands:
-        model = 'gpt-3.5-turbo-1106'
+        model = 'gpt-3.5-turbo'
     elif "gpt4" in subcommands:
         model = 'gpt-4-1106-preview'
 
@@ -392,12 +393,7 @@ def handle_message(event):
         messages = with_previous_messages(
             client, msg, messages, subcommands, token_limit, append_after_index)
 
-    try:
-        response, prompt_tokens, completion_tokens = GPT.query(messages, model=model)
-        reply = f'{response}\n(prompt_tokens={prompt_tokens}, completion_tokens={completion_tokens})'
-    except Exception as e:
-        logging.error(e)
-        reply = "GPT API error. Please try again later."
+    reply = get_gpt_response(messages, model)
     send_reply(reply, msg)
 
 
