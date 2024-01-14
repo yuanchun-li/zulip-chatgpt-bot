@@ -97,7 +97,7 @@ def get_gpt_response(messages, model=DEFAULT_MODEL_NAME):
         )
         response = completion.choices[0].message.content
         prompt_tokens = completion.usage.prompt_tokens
-        completion_tokens += completion.usage.completion_tokens
+        completion_tokens = completion.usage.completion_tokens
         # return response, prompt_tokens, completion_tokens
         reply = f'{response}\n(prompt_tokens={prompt_tokens}, completion_tokens={prompt_tokens})'
         return reply
@@ -316,7 +316,8 @@ def handle_message(event):
     subcommands = get_subcommands(content)
 
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    logging.info("%s Prompt from %s with subcommands: %s is: %s", str(current_time), str(msg['sender_email']), ", ".join(subcommands), content)
+    sender_email = msg['sender_email']
+    logging.info("%s Prompt from %s with subcommands: %s is: %s", str(current_time), str(sender_email), ", ".join(subcommands), content)
 
     # first get rid of the command or mention trigger
     content = re.sub("@\*\*{bot}\*\*".format(bot=BOT_NAME), "", content)
@@ -330,7 +331,7 @@ def handle_message(event):
 
     model_tokens = {
         # input limit for GPT-3.5 Turbo (context 4k, prompt 2.5k, response 1.5k)
-        'gpt-3.5-turbo': 3500,
+        'gpt-3.5-turbo': 3600,
         # input limit for GPT-4 (context 8k, prompt 6k, response 2k)
         'gpt-4': 6000,
         'gpt-4-0314': 6000,
@@ -393,7 +394,23 @@ def handle_message(event):
         messages = with_previous_messages(
             client, msg, messages, subcommands, token_limit, append_after_index)
 
-    reply = get_gpt_response(messages, model)
+    try:
+        completion = openai_client.chat.completions.create(
+            messages=messages,
+            model=model,
+            timeout=15
+        )
+        response = completion.choices[0].message.content
+        prompt_tokens = completion.usage.prompt_tokens
+        completion_tokens = completion.usage.completion_tokens
+        # return response, prompt_tokens, completion_tokens
+        reply = f'{response}\n(prompt_tokens={prompt_tokens}, completion_tokens={prompt_tokens})'
+        logging.info(f'sender_email={sender_email}, prompt_tokens={prompt_tokens}, completion_tokens={prompt_tokens}')
+
+    except Exception as e:
+        logging.error(e)
+        reply = "GPT API error. Please try again later."
+        
     send_reply(reply, msg)
 
 
