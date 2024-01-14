@@ -420,7 +420,7 @@ def handle_message(event):
         else:
             content_brief = content
         content_brief = content_brief.replace('\n', '<br>')
-        logging.info(f'{sender_email} ({sender_name}); prompt_tokens={prompt_tokens}; completion_tokens={completion_tokens}; {content_brief}')
+        logging.info(f'{sender_email} ({sender_name}); {model}; prompt_tokens={prompt_tokens}; completion_tokens={completion_tokens}; {content_brief}')
 
     except Exception as e:
         logging.error(e)
