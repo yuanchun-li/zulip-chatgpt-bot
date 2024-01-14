@@ -39,6 +39,7 @@ PERMISSIONS_SET_CONTEXT = os.environ['PERMISSIONS_SET_CONTEXT']
 DEFAULT_MODEL_NAME = os.environ['DEFAULT_MODEL_NAME']
 BOT_NAME = os.environ['BOT_NAME']
 VERSION = "1.2.0"
+CONTEXT_CLEARED = "context cleared!"
 
 contexts = {}
 
@@ -124,9 +125,8 @@ You can use the following subcommands to control the bot:
 - `!help` - show this help message
 
 ### Context:
-- `!topic` - use context from the current topic (default behaviour; subcommand not implemented/needed)
-- `!stream` - use context from the current stream
-- `!new` - start a new conversation; no previous context (the bot will use context from the previous conversation by default which may affect the generated response)
+- `!continue` - continue the previous conversation (the bot will treat each request as a new conversation by default)
+- `!clear` - clear the context (the messages prior to this will not be included in '!continue' mode)
 - `!contexts` - list all available contexts (e.g. `!cicada`, `!frankie`) and their values
 
 Example custom defined context: `!cicada` - add system context for Cicada; this may provide more accurate responses
@@ -141,7 +141,7 @@ Example custom defined context: `!cicada` - add system context for Cicada; this 
 - `!unset context <name>` - delete a context
 
 ## Example usage
-- `@{bot} !gpt4 !stream Can you summarise previous messages?` - use GPT-4 and context from the current stream
+- `@{bot} !gpt4 !continue Can you summarise previous messages?` - use GPT-4 and context from the current conversation
 - `@{bot} !new I have a question...` - start a new conversation using GPT-3.5 and no context (previous messages will be ignored)
 
 Bot version: {version}
@@ -203,21 +203,27 @@ def with_previous_messages(client, msg, messages, subcommands, token_limit, appe
 
         # remove mentions of the bot
         content = re.sub("@\*\*{bot}\*\*".format(bot=BOT_NAME), "", content)
+        # remove token statistics
+        content = re.sub("\n\(tokens: prompt=.+\)$", "", content)
         content = content.strip()
 
         # get subcommands (words starting with exclamation mark)
         subcommands = get_subcommands(content)
+
+        if 'clear' in subcommands:
+            break
 
         # don't remove in previous messages for now, as it breaks with some code blocks
         # content = remove_subcommands(content, subcommands)
 
         if client.email == msg['sender_email']:
             role = "assistant"
+            if content == CONTEXT_CLEARED:
+                break
         else:
             role = "user"
 
-        new_messages.insert(append_after_index, {
-                            "role": role, "content": content.strip()})
+        new_messages.insert(append_after_index, {"role": role, "content": content.strip()})
         tokens = num_tokens_from_messages(messages=new_messages)
 
         if tokens > token_limit:
@@ -268,7 +274,7 @@ def process_set_subcommands(client, msg, messages, subcommands, content):
 
         context_name = content_chunks[1].lower()
 
-        disabled_contexts = ["topic", "stream", "new", "help",
+        disabled_contexts = ["topic", "stream", "new", "help", "continue",
                              "contexts", "gpt3", "gpt4", "set", "unset", "me", "admin", "stats"]
         if context_name in disabled_contexts:
             send_reply(f"Sorry, you can't set context for {context_name}", msg)
@@ -390,7 +396,10 @@ def handle_message(event):
                             "role": "system", "content": f"{context_value}"})
             append_after_index += 1
 
-    if not subcommands or "new" not in subcommands:
+    if "clear" in subcommands:
+        send_reply(CONTEXT_CLEARED, msg)
+    
+    if "continue" in subcommands:
         messages = with_previous_messages(
             client, msg, messages, subcommands, token_limit, append_after_index)
 
@@ -409,7 +418,7 @@ def handle_message(event):
 
     except Exception as e:
         logging.error(e)
-        reply = "GPT API error. Please try again later."
+        reply = f"GPT API error: {e}"
         
     send_reply(reply, msg)
 
