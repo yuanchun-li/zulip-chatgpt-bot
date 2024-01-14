@@ -2,7 +2,7 @@ import os
 import sys
 import logging
 import re
-import openai
+# import openai
 import zulip
 from dotenv import load_dotenv
 import tiktoken
@@ -25,8 +25,10 @@ db_file = 'data.db' if os.path.isfile('data.db') else 'data/data.db'
 conn = sqlite3.connect(db_file)
 cur = conn.cursor()
 
-# Set up GPT-3 API key
-openai.api_key = os.environ['OPENAI_API_KEY']
+# Set up GPT API key
+# openai.api_key = os.environ['OPENAI_API_KEY']
+gpt_api_url = os.environ['GPT_API_URL']
+gpt_api_key = api_key=os.environ['GPT_API_KEY']
 
 # Set up Zulip client
 client = zulip.Client(config_file=".zuliprc")
@@ -35,6 +37,19 @@ PERMISSIONS_SET_CONTEXT = os.environ['PERMISSIONS_SET_CONTEXT']
 DEFAULT_MODEL_NAME = os.environ['DEFAULT_MODEL_NAME']
 BOT_NAME = os.environ['BOT_NAME']
 VERSION = "1.2.0"
+
+class GPT:
+    # gpt-3.5-turbo-1106, gpt-4-1106-preview
+    @staticmethod
+    def query(messages, model=DEFAULT_MODEL_NAME, url=gpt_api_url, api_key=gpt_api_key, temperature=0.7, verbose=True):
+        body = {'model':model, 'messages':messages, 'temperature': temperature}
+        headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {api_key}', }
+        response = requests.post(url=url, json=body, headers=headers)
+        r = json.loads(response.content)
+        r_content = r['choices'][0]['message']['content']
+        prompt_tokens = r['usage']['prompt_tokens']
+        completion_tokens += r['usage']['completion_tokens']
+        return r_content, prompt_tokens, completion_tokens
 
 contexts = {}
 
@@ -81,15 +96,11 @@ def send_reply(reply, message):
 
 def get_gpt_response(messages, model=DEFAULT_MODEL_NAME):
     try:
-        response = openai.ChatCompletion.create(
-            model=model,
-            messages=messages,
-        )
-
+        response = GPT.query(messages, model)
         return response.choices[0].message.content.strip()
     except Exception as e:
         logging.error(e)
-        return "OpenAI API error. Please try again later."
+        return "GPT API error. Please try again later."
 
 def print_help(msg):
     # return multiline string with help message
@@ -321,23 +332,23 @@ def handle_message(event):
 
     model_tokens = {
         # input limit for GPT-3.5 Turbo (context 4k, prompt 2.5k, response 1.5k)
-        'gpt-3.5-turbo': 2500,
-        'gpt-3.5-turbo-0301': 2500,
+        'gpt-3.5-turbo': 3500,
         # input limit for GPT-4 (context 8k, prompt 6k, response 2k)
         'gpt-4': 6000,
         'gpt-4-0314': 6000,
         'gpt-4-0613': 6000,
+        'gpt-4-1106-preview': 100000  # 128000
     }
 
     model = DEFAULT_MODEL_NAME or 'gpt-3.5-turbo'
 
-    # available_models = ['gpt-3.5-turbo', 'gpt-3.5-turbo-0301', 'gpt4']
+    # available_models = ['gpt-3.5-turbo', 'gpt4']
     # TODO get default model from settings or check !settings
 
     if "gpt3" in subcommands:
         model = 'gpt-3.5-turbo'
     elif "gpt4" in subcommands:
-        model = 'gpt-4'
+        model = 'gpt-4-1106-preview'
 
     token_limit = model_tokens[model]
 
@@ -384,8 +395,13 @@ def handle_message(event):
         messages = with_previous_messages(
             client, msg, messages, subcommands, token_limit, append_after_index)
 
-    response = get_gpt_response(messages, model=model)
-    send_reply(response, msg)
+    try:
+        response, prompt_tokens, completion_tokens = GPT.query(messages, model=model)
+        reply = f'{response}\n(prompt_tokens={prompt_tokens}, completion_tokens={completion_tokens})'
+    except Exception as e:
+        logging.error(e)
+        reply = "GPT API error. Please try again later."
+    send_reply(reply, msg)
 
 
 def main():
