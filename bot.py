@@ -195,6 +195,7 @@ def with_previous_messages(client, msg, messages, subcommands, token_limit, appe
 
     previous_messages = client.get_messages(query)['messages']
     previous_messages.reverse()
+    print(previous_messages)
 
     new_messages = messages.copy()
 
