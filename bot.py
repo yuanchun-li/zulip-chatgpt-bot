@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 import tiktoken
 import sqlite3
 import datetime
+import json
+import requests
 
 # Load the .env file
 load_dotenv()
