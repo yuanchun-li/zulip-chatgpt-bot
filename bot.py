@@ -16,7 +16,7 @@ load_dotenv()
 
 # Set up logging
 LOGLEVEL = os.environ.get('LOGLEVEL', 'INFO').upper()
-logging.basicConfig(level=LOGLEVEL)
+logging.basicConfig(filename='logs.txt', filemode='a', format='%(asctime)s - %(levelname)s - %(message)s', level=LOGLEVEL)
 
 if not os.path.exists('data'):
     os.makedirs('data')
@@ -195,7 +195,7 @@ def with_previous_messages(client, msg, messages, subcommands, token_limit, appe
 
     previous_messages = client.get_messages(query)['messages']
     previous_messages.reverse()
-    print(previous_messages)
+    # print(previous_messages)
 
     new_messages = messages.copy()
 
@@ -315,8 +315,7 @@ def handle_message(event):
         return
 
     if msg['type'] != 'private' and not re.search("@\*\*{bot}\*\*".format(bot=BOT_NAME), content) and not re.search("@{bot}".format(bot=BOT_NAME), content):
-        logging.debug(
-            "Ignoring message not mentioning the bot or sent in private")
+        logging.debug("Ignoring message not mentioning the bot or sent in private")
         return
 
     # get subcommands (words starting with exclamation mark)
@@ -324,7 +323,8 @@ def handle_message(event):
 
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     sender_email = msg['sender_email']
-    logging.info("%s; %s; subcommands: %s; content: %s", str(current_time), str(sender_email), ",".join(subcommands), content)
+    sender_name = msg['sender_full_name']
+    logging.debug("%s; %s; subcommands: %s; content: %s", str(current_time), str(sender_email), ",".join(subcommands), content)
 
     # first get rid of the command or mention trigger
     content = re.sub("@\*\*{bot}\*\*".format(bot=BOT_NAME), "", content)
@@ -404,7 +404,6 @@ def handle_message(event):
     if "continue" in subcommands:
         messages = with_previous_messages(client, msg, messages, subcommands, token_limit, append_after_index)
 
-    logging.debug(messages)
     try:
         completion = openai_client.chat.completions.create(
             messages=messages,
@@ -416,7 +415,12 @@ def handle_message(event):
         completion_tokens = completion.usage.completion_tokens
         # return response, prompt_tokens, completion_tokens
         reply = f'{response}\n(tokens: prompt={prompt_tokens}, completion={completion_tokens})'
-        logging.info(f'{current_time}; {sender_email}; prompt_tokens={prompt_tokens}; completion_tokens={completion_tokens}')
+        if len(content) > 100:
+            content_brief = content[:50] + ' ... ' + content[-50:]
+        else:
+            content_brief = content
+        content_brief = content_brief.replace('\n', '  ')
+        logging.info(f'{current_time}; {sender_email} ({sender_name}); prompt_tokens={prompt_tokens}; completion_tokens={completion_tokens}; {content_brief}')
 
     except Exception as e:
         logging.error(e)
