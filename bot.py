@@ -17,7 +17,7 @@ LOGLEVEL = os.environ.get('LOGLEVEL', 'INFO').upper()
 logging.basicConfig(level=LOGLEVEL)
 
 if not os.path.exists('data'):
-    os.makedir('data')
+    os.makedirs('data')
 if os.path.isfile('data.db'):
     os.rename('data.db', 'data/data.db')
 
@@ -332,7 +332,7 @@ def handle_message(event):
 
     model_tokens = {
         # input limit for GPT-3.5 Turbo (context 4k, prompt 2.5k, response 1.5k)
-        'gpt-3.5-turbo': 3500,
+        'gpt-3.5-turbo-1106': 3500,
         # input limit for GPT-4 (context 8k, prompt 6k, response 2k)
         'gpt-4': 6000,
         'gpt-4-0314': 6000,
@@ -346,7 +346,7 @@ def handle_message(event):
     # TODO get default model from settings or check !settings
 
     if "gpt3" in subcommands:
-        model = 'gpt-3.5-turbo'
+        model = 'gpt-3.5-turbo-1106'
     elif "gpt4" in subcommands:
         model = 'gpt-4-1106-preview'
 
