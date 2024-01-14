@@ -29,8 +29,8 @@ cur = conn.cursor()
 
 # Set up GPT API key
 # openai.api_key = os.environ['OPENAI_API_KEY']
-gpt_api_url = os.environ['GPT_API_URL']
-gpt_api_key = os.environ['GPT_API_KEY']
+openai_api_url = os.environ['OPENAI_API_URL']
+openai_api_key = os.environ['OPENAI_API_KEY']
 
 # Set up Zulip client
 client = zulip.Client(config_file=".zuliprc")
@@ -82,15 +82,15 @@ def send_reply(reply, message):
         }
     client.send_message(response)
 
-client = OpenAI(
-    base_url=gpt_api_url,
+openai_client = OpenAI(
+    base_url=openai_api_url,
     # This is the default and can be omitted
-    api_key=gpt_api_key
+    api_key=openai_api_key
 )
 
 def get_gpt_response(messages, model=DEFAULT_MODEL_NAME):
     try:
-        completion = client.chat.completions.create(
+        completion = openai_client.chat.completions.create(
             messages=messages,
             model=model,
             timeout=15
