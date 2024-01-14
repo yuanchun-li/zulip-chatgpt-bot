@@ -99,7 +99,7 @@ def get_gpt_response(messages, model=DEFAULT_MODEL_NAME):
         prompt_tokens = completion.usage.prompt_tokens
         completion_tokens = completion.usage.completion_tokens
         # return response, prompt_tokens, completion_tokens
-        reply = f'{response}\n(prompt_tokens={prompt_tokens}, completion_tokens={prompt_tokens})'
+        reply = f'{response}\n(prompt_tokens={prompt_tokens}, completion_tokens={completion_tokens})'
         return reply
     except Exception as e:
         logging.error(e)
@@ -317,7 +317,7 @@ def handle_message(event):
 
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     sender_email = msg['sender_email']
-    logging.info("%s Prompt from %s with subcommands: %s is: %s", str(current_time), str(sender_email), ", ".join(subcommands), content)
+    logging.info("%s; %s; subcommands: %s; content: %s", str(current_time), str(sender_email), ",".join(subcommands), content)
 
     # first get rid of the command or mention trigger
     content = re.sub("@\*\*{bot}\*\*".format(bot=BOT_NAME), "", content)
@@ -404,8 +404,8 @@ def handle_message(event):
         prompt_tokens = completion.usage.prompt_tokens
         completion_tokens = completion.usage.completion_tokens
         # return response, prompt_tokens, completion_tokens
-        reply = f'{response}\n(prompt_tokens={prompt_tokens}, completion_tokens={prompt_tokens})'
-        logging.info(f'sender_email={sender_email}, prompt_tokens={prompt_tokens}, completion_tokens={prompt_tokens}')
+        reply = f'{response}\n(tokens: prompt={prompt_tokens}, completion={completion_tokens})'
+        logging.info(f'{current_time}; {sender_email}; prompt_tokens={prompt_tokens}; completion_tokens={completion_tokens}')
 
     except Exception as e:
         logging.error(e)
