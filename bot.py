@@ -398,11 +398,12 @@ def handle_message(event):
 
     if "clear" in subcommands:
         send_reply(CONTEXT_CLEARED, msg)
+        return
     
     if "continue" in subcommands:
-        messages = with_previous_messages(
-            client, msg, messages, subcommands, token_limit, append_after_index)
+        messages = with_previous_messages(client, msg, messages, subcommands, token_limit, append_after_index)
 
+    logging.debug(messages)
     try:
         completion = openai_client.chat.completions.create(
             messages=messages,
