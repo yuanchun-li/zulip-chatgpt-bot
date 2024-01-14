@@ -30,7 +30,7 @@ cur = conn.cursor()
 # Set up GPT API key
 # openai.api_key = os.environ['OPENAI_API_KEY']
 gpt_api_url = os.environ['GPT_API_URL']
-gpt_api_key = api_key=os.environ['GPT_API_KEY']
+gpt_api_key = os.environ['GPT_API_KEY']
 
 # Set up Zulip client
 client = zulip.Client(config_file=".zuliprc")
