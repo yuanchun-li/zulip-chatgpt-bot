@@ -138,6 +138,7 @@ Example custom defined context: `!cicada` - add system context for Cicada; this 
 ### Model (default depends on server settings):
 - `!gpt3` - use GPT-3.5 Turbo (4K tokens limit)
 - `!gpt4` - use GPT-4 (128K tokens limit)
+- `!gpt4v` - use GPT-4 Vision (128K tokens limit)
 - `!dall-e` - use DALL-E-3 (`!hd`/`!1792x1024`/`!natural` modes supported)
 
 gpt3 will be used by default. Please be careful when using other models due to the high rate.
@@ -278,6 +279,32 @@ def refetch_contexts():
     contexts = cur.execute("SELECT * FROM contexts").fetchall()
 
 
+# Function to convert messages to gpt4v format
+def convert_messages_vision(messages):
+    new_messages = []
+    # Updated pattern to match file paths with image extensions
+    url_pattern = r'\[\]\(([^\s]+\.(?:jpg|jpeg|png|gif))\)'
+
+    for message in messages:
+        new_content = []
+        last_index = 0
+        for match in re.finditer(url_pattern, message["content"]):
+            # Add text before the image URL
+            if match.start() != last_index:
+                new_content.append({"type": "text", "text": message["content"][last_index:match.start()]})
+            # Add image URL
+            image_url = match.group(1)
+            if image_url.startswith('/user_uploads'):
+                image_url = server_url + image_url
+            new_content.append({"type": "image_url", "image_url": {"url": image_url}})
+            last_index = match.end()
+        # Add any remaining text after the last image URL
+        if last_index != len(message["content"]):
+            new_content.append({"type": "text", "text": message["content"][last_index:]})
+        new_messages.append({"role": message["role"], "content": new_content})
+    return new_messages
+
+
 def process_set_subcommands(client, msg, messages, subcommands, content):
     content_chunks = content.strip().split()
     command = content_chunks[0].lower()
@@ -336,6 +363,7 @@ def handle_message(event):
 
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     sender_email = msg['sender_email']
+    sender_id = msg['sender_id']
     sender_name = msg['sender_full_name']
     logging.debug("%s (%s); subcommands: %s; content: %s", str(sender_email), str(sender_name), ",".join(subcommands), content)
 
@@ -357,6 +385,7 @@ def handle_message(event):
         'gpt-4-0314': 6000,
         'gpt-4-0613': 6000,
         'gpt-4-1106-preview': 100000,  # 128000,
+        'gpt-4-vision-preview': 100000,
         'dall-e-3': 1000,
     }
 
@@ -369,6 +398,8 @@ def handle_message(event):
         model = 'gpt-3.5-turbo'
     elif "gpt4" in subcommands:
         model = 'gpt-4-1106-preview'
+    elif "gpt4v" in subcommands:
+        model = 'gpt-4-vision-preview'
     elif "dall-e" in subcommands:
         model = 'dall-e-3'
 
@@ -451,13 +482,13 @@ def handle_message(event):
             )
             
             image_url = response.data[0].url
-            logging.info(f'{sender_email} ({sender_name}); {model}; {img_quality}; {img_style}; {img_size}; {content_brief}')
+            logging.info(f'{sender_id} ({sender_name}); {model}; {img_quality}; {img_style}; {img_size}; {content_brief}')
 
             try:
                 response = requests.get(image_url)
                 if response.status_code == 200:
                     image_bytes = io.BytesIO(response.content)
-                    setattr(image_bytes, 'name', f'{current_time}_{sender_email}.png')
+                    setattr(image_bytes, 'name', f'{current_time}_{sender_id}.png')
                     upload_result = client.upload_file(image_bytes)
                     image_url = upload_result['uri']
                 logging.info(f'image uploaded: {server_url}/{image_url}')
@@ -467,6 +498,8 @@ def handle_message(event):
             reply = f'[]({image_url})\nImage generated with prompt: {img_prompt}'
         
         elif model.startswith('gpt-'):
+            if 'vision' in model:
+                messages = convert_messages_vision(messages)
             completion = openai_client.chat.completions.create(
                 messages=messages,
                 model=model,
@@ -476,7 +509,8 @@ def handle_message(event):
             completion_tokens = completion.usage.completion_tokens
             # return response, prompt_tokens, completion_tokens
             reply = f'{response}\n(tokens: prompt={prompt_tokens}, completion={completion_tokens})'
-            logging.info(f'{sender_email} ({sender_name}); {model}; prompt_tokens={prompt_tokens}; completion_tokens={completion_tokens}; {content_brief}')
+            logging.info(f'{sender_id} ({sender_name}); {model}; prompt_tokens={prompt_tokens}; completion_tokens={completion_tokens}; {content_brief}')
+            
         else:
             reply = f'unknown model: {model}'
     except Exception as e:
