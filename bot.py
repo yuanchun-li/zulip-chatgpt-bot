@@ -9,6 +9,8 @@ import tiktoken
 import sqlite3
 import datetime
 import json
+import io
+import random
 import requests
 
 # Load the .env file
@@ -34,6 +36,8 @@ openai_api_key = os.environ['OPENAI_API_KEY']
 
 # Set up Zulip client
 client = zulip.Client(config_file=".zuliprc")
+server_settings = client.get_server_settings()
+server_url = server_settings.realm_uri
 
 PERMISSIONS_SET_CONTEXT = os.environ['PERMISSIONS_SET_CONTEXT']
 DEFAULT_MODEL_NAME = os.environ['DEFAULT_MODEL_NAME']
@@ -244,6 +248,12 @@ def is_admin(client, msg):
     return member.get("user", {}).get("is_admin")
 
 
+def get_temp_file_name(suffix='.png'):
+    randi = random.randint(0, 10000)
+    file_name = f'temp/{randi}{suffix}'
+    return file_name
+
+
 def upsert_context(context_name, context_value):
     context_exists = cur.execute(
         "SELECT * FROM contexts WHERE name = ?", (context_name,)).fetchone()
@@ -441,8 +451,20 @@ def handle_message(event):
             )
             
             image_url = response.data[0].url
-            reply = f'[]({image_url})'
             logging.info(f'{sender_email} ({sender_name}); {model}; {img_quality}; {img_style}; {img_size}; {content_brief}')
+
+            try:
+                response = requests.get(image_url)
+                if response.status_code == 200:
+                    image_bytes = io.BytesIO(response.content)
+                    upload_result = client.upload_file(image_bytes)
+                    image_url = upload_result['uri']
+                logging.info(f'image uploaded: {server_url}/{image_url}')
+            except Exception as e:
+                logging.error(e)
+    
+            reply = f'[]({image_url})\nImage generated with prompt: {img_prompt}'
+        
         elif model.startswith('gpt-'):
             completion = openai_client.chat.completions.create(
                 messages=messages,
