@@ -244,6 +244,33 @@ def with_previous_messages(client, msg, messages, subcommands, token_limit, appe
     return new_messages
 
 
+# Function to convert messages to gpt4v format
+def convert_messages_vision(messages):
+    new_messages = []
+    # Updated pattern to match file paths with image extensions
+    url_pattern = r'\[\]\(([^\s]+\.(?:jpg|jpeg|png|gif))\)'
+
+    for message in messages:
+        new_content = []
+        last_index = 0
+        for match in re.finditer(url_pattern, message["content"]):
+            # Add text before the image URL
+            if match.start() != last_index:
+                new_content.append({"type": "text", "text": message["content"][last_index:match.start()]})
+            # Add image URL
+            image_url = match.group(1)
+            if image_url.startswith('/user_uploads'):
+                image_url = f'{server_url}/{image_url}'
+            new_content.append({"type": "image_url", "image_url": {"url": image_url}})
+            last_index = match.end()
+        # Add any remaining text after the last image URL
+        if last_index != len(message["content"]):
+            new_content.append({"type": "text", "text": message["content"][last_index:]})
+        new_messages.append({"role": message["role"], "content": new_content})
+    logging.debug(new_messages)
+    return new_messages
+
+
 def is_admin(client, msg):
     member = client.get_user_by_id(msg['sender_id'])
     return member.get("user", {}).get("is_admin")
@@ -277,32 +304,6 @@ def delete_context(context_name):
 def refetch_contexts():
     global contexts
     contexts = cur.execute("SELECT * FROM contexts").fetchall()
-
-
-# Function to convert messages to gpt4v format
-def convert_messages_vision(messages):
-    new_messages = []
-    # Updated pattern to match file paths with image extensions
-    url_pattern = r'\[\]\(([^\s]+\.(?:jpg|jpeg|png|gif))\)'
-
-    for message in messages:
-        new_content = []
-        last_index = 0
-        for match in re.finditer(url_pattern, message["content"]):
-            # Add text before the image URL
-            if match.start() != last_index:
-                new_content.append({"type": "text", "text": message["content"][last_index:match.start()]})
-            # Add image URL
-            image_url = match.group(1)
-            if image_url.startswith('/user_uploads'):
-                image_url = server_url + image_url
-            new_content.append({"type": "image_url", "image_url": {"url": image_url}})
-            last_index = match.end()
-        # Add any remaining text after the last image URL
-        if last_index != len(message["content"]):
-            new_content.append({"type": "text", "text": message["content"][last_index:]})
-        new_messages.append({"role": message["role"], "content": new_content})
-    return new_messages
 
 
 def process_set_subcommands(client, msg, messages, subcommands, content):
@@ -440,8 +441,7 @@ def handle_message(event):
     for context_name in context_names:
         if context_name in subcommands:
             context_value = context_map[context_name]
-            messages.insert(append_after_index, {
-                            "role": "system", "content": f"{context_value}"})
+            messages.insert(append_after_index, {"role": "system", "content": f"{context_value}"})
             append_after_index += 1
 
     if "clear" in subcommands:
@@ -495,7 +495,7 @@ def handle_message(event):
             except Exception as e:
                 logging.error(e)
     
-            reply = f'[]({image_url})\nImage generated with prompt: {img_prompt}'
+            reply = f'[]({image_url})'
         
         elif model.startswith('gpt-'):
             if 'vision' in model:
