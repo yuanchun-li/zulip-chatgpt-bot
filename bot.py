@@ -133,8 +133,10 @@ Example custom defined context: `!cicada` - add system context for Cicada; this 
 
 ### Model (default depends on server settings):
 - `!gpt3` - use GPT-3.5 Turbo (4K tokens limit)
-- `!gpt4` - use GPT-4 (128K tokens limit; high rate, be careful)
-- `!dall-e` - use DALL-E-3 (`!hd`/`!1792×1024` modes supported; high rate, be careful)
+- `!gpt4` - use GPT-4 (128K tokens limit)
+- `!dall-e` - use DALL-E-3 (`!hd`/`!1792×1024`/`!natural` modes supported)
+
+gpt3 will be used by default. Please be careful when using other models due to the high rate.
 
 ### Global settings:
 - `!set` - (not implemented yet) show current settings
@@ -423,22 +425,24 @@ def handle_message(event):
             img_prompt = '\n'.join(img_prompt)
             
             img_quality = 'hd' if 'hd' in subcommands else 'standard'
+            img_style = 'natural' if 'natural' in subcommands else 'vivid'
             img_size = '1024x1024'
             if '1024×1792' in subcommands:
                 img_size = '1024×1792'
             if '1792×1024' in subcommands:
                 img_size = '1792×1024'
             response = openai_client.images.generate(
-              model=model,
-              prompt=img_prompt,
-              size=img_size,
-              quality=img_quality,
-              n=1,
+                model=model,
+                prompt=img_prompt,
+                size=img_size,
+                quality=img_quality,
+                style=img_style,
+                n=1,
             )
             
             image_url = response.data[0].url
             reply = f'[]({image_url})'
-            logging.info(f'{sender_email} ({sender_name}); {model}; {img_quality}; {img_size}; {content_brief}')
+            logging.info(f'{sender_email} ({sender_name}); {model}; {img_quality}; {img_style}; {img_size}; {content_brief}')
         elif model.startswith('gpt-'):
             completion = openai_client.chat.completions.create(
                 messages=messages,
