@@ -93,23 +93,6 @@ openai_client = OpenAI(
     api_key=openai_api_key
 )
 
-def get_gpt_response(messages, model=DEFAULT_MODEL_NAME):
-    try:
-        completion = openai_client.chat.completions.create(
-            messages=messages,
-            model=model,
-            timeout=15
-        )
-        response = completion.choices[0].message.content
-        prompt_tokens = completion.usage.prompt_tokens
-        completion_tokens = completion.usage.completion_tokens
-        # return response, prompt_tokens, completion_tokens
-        reply = f'{response}\n(prompt_tokens={prompt_tokens}, completion_tokens={completion_tokens})'
-        return reply
-    except Exception as e:
-        logging.error(e)
-        return "GPT API error. Please try again later."
-
 def print_help(msg):
     # return multiline string with help message
     help_message = """# GPT Bot of MobileLLM Team @ THU-AIR
@@ -138,7 +121,7 @@ Example custom defined context: `!cicada` - add system context for Cicada; this 
 ### Model (default depends on server settings):
 - `!gpt3` - use GPT-3.5 Turbo (4K tokens limit)
 - `!gpt4` - use GPT-4 (128K tokens limit)
-- `!gpt4v` - use GPT-4 Vision (128K tokens limit)
+- `!gpt4v` - use GPT-4 Vision (128K tokens limit, only public image urls supported)
 - `!dall-e` - use DALL-E-3 (`!hd`/`!1792x1024`/`!natural` modes supported)
 
 gpt3 will be used by default. Please be careful when using other models due to the high rate.
@@ -248,7 +231,8 @@ def with_previous_messages(client, msg, messages, subcommands, token_limit, appe
 def convert_messages_vision(messages):
     new_messages = []
     # Updated pattern to match file paths with image extensions
-    url_pattern = r'\[\]\(([^\s]+\.(?:jpg|jpeg|png|gif))\)'
+    url_pattern = r'\[\]\((http[s]?://[^\s]+\.(?:jpg|jpeg|png|gif))\)'
+    # url_pattern = r'\[\]\(([^\s]+\.(?:jpg|jpeg|png|gif))\)'
 
     for message in messages:
         new_content = []
@@ -259,8 +243,8 @@ def convert_messages_vision(messages):
                 new_content.append({"type": "text", "text": message["content"][last_index:match.start()]})
             # Add image URL
             image_url = match.group(1)
-            if image_url.startswith('/user_uploads'):
-                image_url = f'{server_url}/{image_url}'
+            # if image_url.startswith('/user_uploads'):   # user-uploaded images not supported
+            #     image_url = f'{server_url}/{image_url}'
             new_content.append({"type": "image_url", "image_url": {"url": image_url}})
             last_index = match.end()
         # Add any remaining text after the last image URL
