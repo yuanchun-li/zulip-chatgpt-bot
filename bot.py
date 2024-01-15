@@ -123,7 +123,7 @@ Example custom defined context: `!cicada` - add system context for Cicada; this 
 ### Model (default depends on server settings):
 - `!gpt3` - use GPT-3.5 Turbo (4K tokens limit)
 - `!gpt4` - use GPT-4 (128K tokens limit)
-- `!gpt4v` - use GPT-4 Vision (require to annotate each image as `[IMG](url)`)
+- `!gpt4v` - use GPT-4 Vision (you can annotate web images as `[IMG](url)`)
 - `!dall-e` - use DALL-E-3 (`!hd`/`!1792x1024`/`!natural` modes supported)
 
 gpt3 will be used by default. Please be careful when using other models due to the high rate.
@@ -233,8 +233,9 @@ def with_previous_messages(client, msg, messages, subcommands, token_limit, appe
 def convert_messages_vision(messages):
     new_messages = []
     # Updated pattern to match file paths with image extensions
-    url_pattern = r'\[IMG\]\(([^\s]+)\)'
+    # url_pattern = r'\[IMG\]\(([^\s]+)\)'
     # url_pattern = r'\[\]\(([^\s]+\.(?:jpg|jpeg|png|gif|webp))\)'
+    url_pattern = r'\[IMG\]\(([^\s]+)\)|\[.*?\]\(([^\s]+\.(?:jpg|jpeg|png|webp))\)'
 
     for message in messages:
         new_content = []
@@ -312,8 +313,8 @@ def process_set_subcommands(client, msg, messages, subcommands, content):
 
         context_name = content_chunks[1].lower()
 
-        disabled_contexts = ["topic", "stream", "new", "help", "continue",
-                             "contexts", "gpt3", "gpt4", "dall-e", "set", "unset", "me", "admin", "stats"]
+        disabled_contexts = ["topic", "stream", "new", "help", "continue", "contexts", 
+                             "gpt3", "gpt4", "gpt4v", "dall-e", "set", "unset", "me", "admin", "stats"]
         if context_name in disabled_contexts:
             send_reply(f"Sorry, you can't set context for {context_name}", msg)
             return
@@ -487,7 +488,7 @@ def handle_message(event):
                     setattr(image_bytes, 'name', f'{current_time}_{sender_id}.png')
                     upload_result = client.upload_file(image_bytes)
                     image_url = upload_result['uri']
-                logging.info(f'image uploaded: {server_url}/{image_url}')
+                    logging.info(f'image uploaded: {server_url}/{image_url}')
             except Exception as e:
                 logging.error(e)
     
