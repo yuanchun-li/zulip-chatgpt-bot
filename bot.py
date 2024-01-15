@@ -133,7 +133,8 @@ Example custom defined context: `!cicada` - add system context for Cicada; this 
 
 ### Model (default depends on server settings):
 - `!gpt3` - use GPT-3.5 Turbo (4K tokens limit)
-- `!gpt4` - use GPT-4 (128K tokens limit, please be careful due to the high rate)
+- `!gpt4` - use GPT-4 (128K tokens limit; high rate, be careful)
+- `!dall-e` - use DALL-E-3 (`!hd`/`!1792×1024` modes supported; high rate, be careful)
 
 ### Global settings:
 - `!set` - (not implemented yet) show current settings
@@ -141,8 +142,8 @@ Example custom defined context: `!cicada` - add system context for Cicada; this 
 - `!unset context <name>` - delete a context
 
 ## Example usage
+- `@{bot} I have a question...` - start a new conversation using GPT-3.5 and no context (previous messages will be ignored)
 - `@{bot} !gpt4 !continue Can you summarise previous messages?` - use GPT-4 and context from the current conversation
-- `@{bot} !new I have a question...` - start a new conversation using GPT-3.5 and no context (previous messages will be ignored)
 
 Bot version: {version}
 """.format(bot=BOT_NAME, version=VERSION)
@@ -276,7 +277,7 @@ def process_set_subcommands(client, msg, messages, subcommands, content):
         context_name = content_chunks[1].lower()
 
         disabled_contexts = ["topic", "stream", "new", "help", "continue",
-                             "contexts", "gpt3", "gpt4", "set", "unset", "me", "admin", "stats"]
+                             "contexts", "gpt3", "gpt4", "dall-e", "set", "unset", "me", "admin", "stats"]
         if context_name in disabled_contexts:
             send_reply(f"Sorry, you can't set context for {context_name}", msg)
             return
@@ -343,8 +344,8 @@ def handle_message(event):
         'gpt-4': 6000,
         'gpt-4-0314': 6000,
         'gpt-4-0613': 6000,
-        'gpt-4-1106-preview': 100000  # 128000,
-        'dall-e-3': 900,
+        'gpt-4-1106-preview': 100000,  # 128000,
+        'dall-e-3': 1000,
     }
 
     model = DEFAULT_MODEL_NAME or 'gpt-3.5-turbo'
