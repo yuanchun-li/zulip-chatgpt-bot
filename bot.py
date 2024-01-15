@@ -133,7 +133,7 @@ Example custom defined context: `!cicada` - add system context for Cicada; this 
 
 ### Model (default depends on server settings):
 - `!gpt3` - use GPT-3.5 Turbo (4K tokens limit)
-- `!gpt4` - use GPT-4 (128K tokens limit, please be careful due to the high price)
+- `!gpt4` - use GPT-4 (128K tokens limit, please be careful due to the high rate)
 
 ### Global settings:
 - `!set` - (not implemented yet) show current settings
@@ -338,12 +338,13 @@ def handle_message(event):
 
     model_tokens = {
         # input limit for GPT-3.5 Turbo (context 4k, prompt 2.5k, response 1.5k)
-        'gpt-3.5-turbo': 3600,
+        'gpt-3.5-turbo': 3800,
         # input limit for GPT-4 (context 8k, prompt 6k, response 2k)
         'gpt-4': 6000,
         'gpt-4-0314': 6000,
         'gpt-4-0613': 6000,
-        'gpt-4-1106-preview': 100000  # 128000
+        'gpt-4-1106-preview': 100000  # 128000,
+        'dall-e-3': 900,
     }
 
     model = DEFAULT_MODEL_NAME or 'gpt-3.5-turbo'
@@ -355,6 +356,8 @@ def handle_message(event):
         model = 'gpt-3.5-turbo'
     elif "gpt4" in subcommands:
         model = 'gpt-4-1106-preview'
+    elif "dall-e" in subcommands:
+        model = 'dall-e-3'
 
     token_limit = model_tokens[model]
 
@@ -404,27 +407,53 @@ def handle_message(event):
     if "continue" in subcommands:
         messages = with_previous_messages(client, msg, messages, subcommands, token_limit, append_after_index)
 
-    try:
-        completion = openai_client.chat.completions.create(
-            messages=messages,
-            model=model,
-            timeout=15
-        )
-        response = completion.choices[0].message.content
-        prompt_tokens = completion.usage.prompt_tokens
-        completion_tokens = completion.usage.completion_tokens
-        # return response, prompt_tokens, completion_tokens
-        reply = f'{response}\n(tokens: prompt={prompt_tokens}, completion={completion_tokens})'
-        if len(content) > 100:
-            content_brief = content[:50] + ' ... ' + content[-50:]
-        else:
-            content_brief = content
-        content_brief = content_brief.replace('\n', '<br>')
-        logging.info(f'{sender_email} ({sender_name}); {model}; prompt_tokens={prompt_tokens}; completion_tokens={completion_tokens}; {content_brief}')
+    if len(content) > 100:
+        content_brief = content[:50] + ' ... ' + content[-50:]
+    else:
+        content_brief = content
+    content_brief = content_brief.replace('\n', '<br>')
 
+    try:
+        if model == 'dall-e-3':
+            img_prompt = []
+            for row in messages:
+                if row['role'] == 'user':
+                    img_prompt.append(row['content'])
+            img_prompt = '\n'.join(img_prompt)
+            
+            img_quality = 'hd' if 'hd' in subcommands else 'standard'
+            img_size = '1024x1024'
+            if '1024×1792' in subcommands:
+                img_size = '1024×1792'
+            if '1792×1024' in subcommands:
+                img_size = '1792×1024'
+            response = openai_client.images.generate(
+              model=model,
+              prompt=img_prompt,
+              size=img_size,
+              quality=img_quality,
+              n=1,
+            )
+            
+            image_url = response.data[0].url
+            reply = f'[]({image_url})'
+            logging.info(f'{sender_email} ({sender_name}); {model}; {img_quality}; {img_size}; {content_brief}')
+        elif model.startswith('gpt-'):
+            completion = openai_client.chat.completions.create(
+                messages=messages,
+                model=model,
+            )
+            response = completion.choices[0].message.content
+            prompt_tokens = completion.usage.prompt_tokens
+            completion_tokens = completion.usage.completion_tokens
+            # return response, prompt_tokens, completion_tokens
+            reply = f'{response}\n(tokens: prompt={prompt_tokens}, completion={completion_tokens})'
+            logging.info(f'{sender_email} ({sender_name}); {model}; prompt_tokens={prompt_tokens}; completion_tokens={completion_tokens}; {content_brief}')
+        else:
+            reply = f'unknown model: {model}'
     except Exception as e:
         logging.error(e)
-        reply = f"GPT API error: {e}"
+        reply = f"API error: {e}"
         
     send_reply(reply, msg)
 
