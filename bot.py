@@ -37,7 +37,7 @@ openai_api_key = os.environ['OPENAI_API_KEY']
 # Set up Zulip client
 client = zulip.Client(config_file=".zuliprc")
 server_settings = client.get_server_settings()
-server_url = server_settings.realm_uri
+server_url = server_settings['realm_uri']
 
 PERMISSIONS_SET_CONTEXT = os.environ['PERMISSIONS_SET_CONTEXT']
 DEFAULT_MODEL_NAME = os.environ['DEFAULT_MODEL_NAME']
