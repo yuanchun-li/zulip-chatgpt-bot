@@ -121,7 +121,7 @@ Example custom defined context: `!cicada` - add system context for Cicada; this 
 ### Model (default depends on server settings):
 - `!gpt3` - use GPT-3.5 Turbo (4K tokens limit)
 - `!gpt4` - use GPT-4 (128K tokens limit)
-- `!gpt4v` - use GPT-4 Vision (128K tokens limit, only public image urls supported)
+- `!gpt4v` - use GPT-4 Vision (todo; 128K tokens limit, annotate each image as [IMG](url))
 - `!dall-e` - use DALL-E-3 (`!hd`/`!1792x1024`/`!natural` modes supported)
 
 gpt3 will be used by default. Please be careful when using other models due to the high rate.
@@ -231,7 +231,7 @@ def with_previous_messages(client, msg, messages, subcommands, token_limit, appe
 def convert_messages_vision(messages):
     new_messages = []
     # Updated pattern to match file paths with image extensions
-    url_pattern = r'\[\]\((http[s]?://[^\s]+\.(?:jpg|jpeg|png|gif))\)'
+    url_pattern = r'\[IMG\]\(([^\s]+)\)'
     # url_pattern = r'\[\]\(([^\s]+\.(?:jpg|jpeg|png|gif))\)'
 
     for message in messages:
