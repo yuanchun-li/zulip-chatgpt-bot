@@ -495,11 +495,14 @@ def handle_message(event):
             reply = f'An image generated with prompt `{img_prompt}`:\n[IMG]({image_url})'
         
         elif model.startswith('gpt-'):
+            max_tokens = None
             if 'vision' in model:
                 messages = convert_messages_vision(messages)
+                max_tokens = 500
             completion = openai_client.chat.completions.create(
                 messages=messages,
                 model=model,
+                max_tokens=max_tokens
             )
             response = completion.choices[0].message.content
             prompt_tokens = completion.usage.prompt_tokens
