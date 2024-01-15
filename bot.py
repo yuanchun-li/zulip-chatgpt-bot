@@ -457,6 +457,7 @@ def handle_message(event):
                 response = requests.get(image_url)
                 if response.status_code == 200:
                     image_bytes = io.BytesIO(response.content)
+                    setattr(image_bytes, 'name', f'{current_time}_{sender_email}.png')
                     upload_result = client.upload_file(image_bytes)
                     image_url = upload_result['uri']
                 logging.info(f'image uploaded: {server_url}/{image_url}')
