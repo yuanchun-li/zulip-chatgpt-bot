@@ -245,7 +245,7 @@ def convert_messages_vision(messages):
             if match.start() != last_index:
                 new_content.append({"type": "text", "text": message["content"][last_index:match.start()]})
             # Add image URL
-            image_url = match.group(1)
+            image_url = match.group(1) if match.group(1) else match.group(2)
             if image_url.startswith('/user_uploads'):   # user-uploaded images
                 try:
                     server_image_url = f'{server_url}/{image_url}'
