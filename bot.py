@@ -250,11 +250,19 @@ def convert_messages_vision(messages):
                 try:
                     server_image_url = f'{server_url}/{image_url}'
                     r = client.session.get(server_image_url)
-                    image = Image.open(io.BytesIO(r.content))
-                    image_stream = io.BytesIO()
-                    image.save(image_stream, format="JPEG")
-                    image_base64 = base64.b64encode(image_stream.getvalue()).decode("utf-8")
-                    image_url = f'data:image/jpeg;base64,{image_base64}'
+                    with Image.open(io.BytesIO(r.content)) as image:
+                        image_format = image.format.upper()
+                        if image_format not in ['JPEG', 'JPG', 'PNG', 'WEBP']:
+                            image_format = 'JPEG'  # Default to JPEG if format is not one of the common types
+                        
+                        # Convert image to RGB if it's not already in a compatible format
+                        if image.mode == 'P' or image.mode == 'RGBA' and image_format in ['JPEG', 'JPG']:
+                            image = image.convert('RGB')
+                        
+                        image_stream = io.BytesIO()
+                        image.save(image_stream, format=image_format)
+                        image_base64 = base64.b64encode(image_stream.getvalue()).decode("utf-8")
+                        image_url = f'data:image/{image_format.lower()};base64,{image_base64}'
                 except Exception as e:
                     logging.error(f'convert_messages_vision: {e}')
                     continue
