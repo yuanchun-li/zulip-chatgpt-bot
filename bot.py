@@ -12,6 +12,8 @@ import json
 import io
 import random
 import requests
+import base64
+from PIL import Image
 
 # Load the .env file
 load_dotenv()
@@ -121,7 +123,7 @@ Example custom defined context: `!cicada` - add system context for Cicada; this 
 ### Model (default depends on server settings):
 - `!gpt3` - use GPT-3.5 Turbo (4K tokens limit)
 - `!gpt4` - use GPT-4 (128K tokens limit)
-- `!gpt4v` - use GPT-4 Vision (todo; 128K tokens limit, annotate each image as [IMG](url))
+- `!gpt4v` - use GPT-4 Vision (require to annotate each image as [IMG](url))
 - `!dall-e` - use DALL-E-3 (`!hd`/`!1792x1024`/`!natural` modes supported)
 
 gpt3 will be used by default. Please be careful when using other models due to the high rate.
@@ -232,7 +234,7 @@ def convert_messages_vision(messages):
     new_messages = []
     # Updated pattern to match file paths with image extensions
     url_pattern = r'\[IMG\]\(([^\s]+)\)'
-    # url_pattern = r'\[\]\(([^\s]+\.(?:jpg|jpeg|png|gif))\)'
+    # url_pattern = r'\[\]\(([^\s]+\.(?:jpg|jpeg|png|gif|webp))\)'
 
     for message in messages:
         new_content = []
@@ -243,8 +245,18 @@ def convert_messages_vision(messages):
                 new_content.append({"type": "text", "text": message["content"][last_index:match.start()]})
             # Add image URL
             image_url = match.group(1)
-            # if image_url.startswith('/user_uploads'):   # user-uploaded images not supported
-            #     image_url = f'{server_url}/{image_url}'
+            if image_url.startswith('/user_uploads'):   # user-uploaded images
+                try:
+                    server_image_url = f'{server_url}/{image_url}'
+                    r = client.session.get(server_image_url)
+                    image = Image.open(io.BytesIO(r.content))
+                    image_stream = io.BytesIO()
+                    image.save(image_stream, format="JPEG")
+                    image_base64 = base64.b64encode(image_stream.getvalue()).decode("utf-8")
+                    image_url = f'data:image/jpeg;base64,{image_base64}'
+                except Exception as e:
+                    logging.error(f'convert_messages_vision: {e}')
+                    continue
             new_content.append({"type": "image_url", "image_url": {"url": image_url}})
             last_index = match.end()
         # Add any remaining text after the last image URL
@@ -479,7 +491,7 @@ def handle_message(event):
             except Exception as e:
                 logging.error(e)
     
-            reply = f'[]({image_url})'
+            reply = f'An image generated with prompt `{img_prompt}`:\n[IMG]({image_url})'
         
         elif model.startswith('gpt-'):
             if 'vision' in model:
