@@ -123,7 +123,7 @@ Example custom defined context: `!cicada` - add system context for Cicada; this 
 ### Model (default depends on server settings):
 - `!gpt3` - use GPT-3.5 Turbo (4K tokens limit)
 - `!gpt4` - use GPT-4 (128K tokens limit)
-- `!gpt4v` - use GPT-4 Vision (require to annotate each image as [IMG](url))
+- `!gpt4v` - use GPT-4 Vision (require to annotate each image as `[IMG](url)`)
 - `!dall-e` - use DALL-E-3 (`!hd`/`!1792x1024`/`!natural` modes supported)
 
 gpt3 will be used by default. Please be careful when using other models due to the high rate.

@@ -28,30 +28,28 @@ You can use the following subcommands to control the bot:
 - `!help` - show this help message
 
 ### Context:
-- `!topic` - use context from the current topic (default behaviour; subcommand not implemented/needed)
-- `!stream` - use context from the current stream
-- `!new` - start a new conversation; no previous context (the bot will use context from the previous conversation by default which may affect the generated response)
+- `!continue` - continue the previous conversation (the bot will treat each request as a new conversation by default)
+- `!clear` - clear the context (the messages prior to this will not be included in '!continue' mode)
 - `!contexts` - list all available contexts (e.g. `!cicada`, `!frankie`) and their values
 
 Example custom defined context: `!cicada` - add system context for Cicada; this may provide more accurate responses
 
-### Model:
-- `!gpt3` - use GPT-3.5 Turbo (default; 4K tokens, up to 2.5K for input)
-- `!gpt4` - use GPT-4 (8K tokens, up to 6K for input)
+### Model (default depends on server settings):
+- `!gpt3` - use GPT-3.5 Turbo (4K tokens limit)
+- `!gpt4` - use GPT-4 (128K tokens limit)
+- `!gpt4v` - use GPT-4 Vision (require to annotate each image as \[IMG\](url))
+- `!dall-e` - use DALL-E-3 (`!hd`/`!1792x1024`/`!natural` modes supported)
 
-### Global settings (admins only):
+gpt3 will be used by default. Please be careful when using other models due to the high rate.
+
+### Global settings:
 - `!set` - (not implemented yet) show current settings
 - `!set context <name> <value> - upsert a context like !cicada. Example: `!set context cicada Cicada is a business wallet`
 - `!unset context <name>` - delete a context
 
-### User settings (not implemented yet):
-- `!me` - show your current settings
-- `!me model gpt3` - set your default model to GPT-3.5 Turbo
-- `!me model gpt4` - set your default model to GPT-4
-
 ## Example usage
-- `@{bot} !gpt4 !stream Can you summarise previous messages?` - use GPT-4 and context from the current stream
-- `@{bot} !new I have a question...` - start a new conversation using GPT-3.5 Turbo and no context (previous messages will be ignored)
+- `@{bot} I have a question...` - start a new conversation using GPT-3.5 and no context (previous messages will be ignored)
+- `@{bot} !gpt4 !continue Can you summarise previous messages?` - use GPT-4 and context from the current conversation
 
 Bot version: {version}
 ```
