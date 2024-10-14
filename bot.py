@@ -121,10 +121,10 @@ You can use the following subcommands to control the bot:
 Example custom defined context: `!cicada` - add system context for Cicada; this may provide more accurate responses
 
 ### Model (default depends on server settings):
-- `!gpt3` - use GPT-3.5 Turbo (4K tokens limit)
-- `!gpt4` - use GPT-4 (128K tokens limit)
+- `!gpt4o` - use GPT-4 (128K tokens limit)
 - `!gpt4v` - use GPT-4 Vision (you can annotate web images as `[IMG](url)`)
 - `!dall-e` - use DALL-E-3 (`!hd`/`!1792x1024`/`!natural` modes supported)
+Other models include: gpt3, gpt4, gpt4o-mini, o1, ...
 
 gpt3 will be used by default. Please be careful when using other models due to the high rate.
 
@@ -322,7 +322,8 @@ def process_set_subcommands(client, msg, messages, subcommands, content):
         context_name = content_chunks[1].lower()
 
         disabled_contexts = ["topic", "stream", "new", "help", "continue", "contexts", 
-                             "gpt3", "gpt4", "gpt4v", "dall-e", "set", "unset", "me", "admin", "stats"]
+                             "gpt3", "gpt4", "gpt4v", "gpt4o", "gpt4o-mini", "o1", "dall-e",
+                             "set", "unset", "me", "admin", "stats"]
         if context_name in disabled_contexts:
             send_reply(f"Sorry, you can't set context for {context_name}", msg)
             return
@@ -395,7 +396,7 @@ def handle_message(event):
         'dall-e-3': 1000,
     }
 
-    model = DEFAULT_MODEL_NAME or 'gpt-3.5-turbo'
+    model = DEFAULT_MODEL_NAME or 'gpt-4o-2024-08-06'
 
     # available_models = ['gpt-3.5-turbo', 'gpt4']
     # TODO get default model from settings or check !settings
@@ -406,6 +407,12 @@ def handle_message(event):
         model = 'gpt-4-1106-preview'
     elif "gpt4v" in subcommands:
         model = 'gpt-4-vision-preview'
+    elif "gpt4o" in subcommands:
+        model = 'gpt-4o-2024-08-06'
+    elif "gpt4o-mini" in subcommands:
+        model = 'gpt-4o-mini-2024-07-18'
+    elif "o1" in subcommands:
+        model = 'o1-preview-2024-09-12'
     elif "dall-e" in subcommands:
         model = 'dall-e-3'
 
