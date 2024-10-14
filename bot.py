@@ -416,7 +416,7 @@ def handle_message(event):
     elif "dall-e" in subcommands:
         model = 'dall-e-3'
 
-    token_limit = model_tokens[model]
+    token_limit = model_tokens[model] if model in model_tokens else 100000
 
     messages = [
         {"role": "system", "content": os.environ['BOT_ROLE']},
@@ -509,7 +509,7 @@ def handle_message(event):
     
             reply = f'An image generated with prompt `{img_prompt}`:\n[IMG]({image_url})'
         
-        elif model.startswith('gpt-'):
+        elif model.startswith('gpt') or model.startswith('o1'):
             max_tokens = None
             if 'vision' in model:
                 messages = convert_messages_vision(messages)
@@ -523,7 +523,7 @@ def handle_message(event):
             prompt_tokens = completion.usage.prompt_tokens
             completion_tokens = completion.usage.completion_tokens
             # return response, prompt_tokens, completion_tokens
-            reply = f'{response}\n(tokens: prompt={prompt_tokens}, completion={completion_tokens})'
+            reply = f'{response}\n(tokens: prompt={prompt_tokens}, completion={completion_tokens}, model={model})'
             logging.info(f'{sender_id} ({sender_name}); {model}; prompt_tokens={prompt_tokens}; completion_tokens={completion_tokens}; {content_brief}')
             
         else:
